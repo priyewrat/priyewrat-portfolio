@@ -5,7 +5,7 @@ import { PortfolioData } from './types';
 import PortfolioView from './components/PortfolioView';
 import AdminDashboard from './components/AdminDashboard';
 import LoginForm from './components/LoginForm';
-import { auth, isFirebaseConfigured, onAuthStateChanged, signOut } from './lib/firebase';
+import { auth, isFirebaseConfigured, onAuthStateChanged, signOut, isAllowedAdminEmail } from './lib/firebase';
 
 export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -18,25 +18,66 @@ export default function App() {
     setPortfolioData(getPortfolioData());
 
     if (isFirebaseConfigured && auth) {
-      const unsubscribe = onAuthStateChanged(auth!, (user) => {
-        if (user) {
+      const unsubscribe = onAuthStateChanged(auth!, async (user) => {
+        if (user && isAllowedAdminEmail(user.email)) {
           setAdminAuthenticated(true);
           setIsAdmin(true);
         } else {
-          // If logged out from Firebase, check localStorage for local fallback sessions
-          const localAuth = isAdminAuthenticated();
-          setIsAdmin(localAuth);
+          // If unauthorized user is signed into Firebase, force sign-out
+          if (user && !isAllowedAdminEmail(user.email)) {
+            console.warn(`Unauthorized login attempt by: ${user.email}`);
+            try {
+              await signOut(auth!);
+            } catch (err) {
+              console.error('Error signing out unauthorized user:', err);
+            }
+          }
+          setAdminAuthenticated(false);
+          setIsAdmin(false);
+          setViewMode('preview');
         }
       });
       return () => unsubscribe();
     } else {
-      setIsAdmin(isAdminAuthenticated());
+      const authStatus = isAdminAuthenticated();
+      setIsAdmin(authStatus);
+      if (!authStatus) {
+        setViewMode('preview');
+      }
     }
   }, []);
 
   // Update states when portfolio data changes in dashboard
   const handleDataChange = () => {
     setPortfolioData(getPortfolioData());
+  };
+
+  const handleOpenLoginModal = () => {
+    // If not authenticated, ensure admin mode is disabled while logging in
+    const isAuth = isFirebaseConfigured && auth 
+      ? (auth.currentUser ? isAllowedAdminEmail(auth.currentUser.email) : false)
+      : isAdminAuthenticated();
+
+    if (!isAuth) {
+      setIsAdmin(false);
+      setAdminAuthenticated(false);
+      setViewMode('preview');
+    }
+    setShowLoginModal(true);
+  };
+
+  const handleCloseLoginModal = () => {
+    setShowLoginModal(false);
+    // When closing login modal without completing authentication, strictly revoke admin view
+    const isAuth = isFirebaseConfigured && auth 
+      ? (auth.currentUser ? isAllowedAdminEmail(auth.currentUser.email) : false)
+      : isAdminAuthenticated();
+
+    if (!isAuth) {
+      setIsAdmin(false);
+      setAdminAuthenticated(false);
+      setViewMode('preview');
+    }
   };
 
   const handleLoginSuccess = () => {
@@ -89,7 +130,7 @@ export default function App() {
               onClick={() => setViewMode('admin')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold transition ${
                 viewMode === 'admin' 
-                  ? 'bg-emerald-600 text-white shadow-sm cursor-pointer' 
+                  ? 'bg-emerald-600 text-white shadow-sm' 
                   : 'text-zinc-300 hover:text-white hover:bg-zinc-800'
               }`}
             >
@@ -102,7 +143,7 @@ export default function App() {
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold transition ${
                 viewMode === 'preview' 
                   ? 'bg-emerald-600 text-white shadow-sm' 
-                  : 'text-zinc-300 hover:text-white hover:bg-zinc-800 cursor-pointer'
+                  : 'text-zinc-300 hover:text-white hover:bg-zinc-800'
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
@@ -113,7 +154,7 @@ export default function App() {
 
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1 px-2.5 py-1 text-red-400 hover:text-red-300 hover:bg-red-950/20 rounded-lg font-semibold transition cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1 text-red-400 hover:text-red-300 hover:bg-red-950/20 rounded-lg font-semibold transition"
               title="Logout session"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -129,7 +170,7 @@ export default function App() {
           <AdminDashboard onLogout={handleLogout} onDataChange={handleDataChange} />
         ) : (
           <PortfolioView 
-            onLoginClick={() => setShowLoginModal(true)} 
+            onLoginClick={handleOpenLoginModal} 
             portfolioData={portfolioData} 
           />
         )}
@@ -139,7 +180,7 @@ export default function App() {
       {showLoginModal && (
         <LoginForm 
           onSuccess={handleLoginSuccess} 
-          onClose={() => setShowLoginModal(false)} 
+          onClose={handleCloseLoginModal} 
         />
       )}
 

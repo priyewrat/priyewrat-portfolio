@@ -8,8 +8,8 @@ import {
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged
-} from '@firebase/auth';
-import type { Auth } from '@firebase/auth';
+} from 'firebase/auth';
+import type { Auth } from 'firebase/auth';
 
 const env = (import.meta as any).env || {};
 
@@ -47,6 +47,16 @@ if (isFirebaseConfigured) {
   }
 }
 
+export const ALLOWED_ADMIN_EMAILS = [
+  'priyewratsingh@gmail.com',
+  'priyewrat@gmail.com',
+];
+
+export function isAllowedAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return ALLOWED_ADMIN_EMAILS.includes(email.trim().toLowerCase());
+}
+
 export { 
   auth, 
   googleProvider,
@@ -56,4 +66,3 @@ export {
   signOut,
   onAuthStateChanged
 };
-

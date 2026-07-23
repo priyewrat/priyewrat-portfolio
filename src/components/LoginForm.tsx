@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Lock, Mail, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2, 
-  HelpCircle, ChevronDown, ChevronUp, ShieldAlert, Sparkles 
+  HelpCircle, ChevronDown, ChevronUp, ShieldAlert, Sparkles, X 
 } from 'lucide-react';
 import { 
   auth, 
@@ -10,8 +10,10 @@ import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   signInWithPopup,
-  signOut
+  signOut,
+  isAllowedAdminEmail
 } from '../lib/firebase';
+import { setAdminAuthenticated } from '../lib/storage';
 
 interface LoginFormProps {
   onSuccess: () => void;
@@ -30,8 +32,6 @@ export default function LoginForm({ onSuccess, onClose }: LoginFormProps) {
   const [loading, setLoading] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
 
-  const ALLOWED_GOOGLE_EMAILS = ['priyewratsingh@gmail.com', 'priyewrat@gmail.com'];
-
   // Handles Email & Password login
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,12 +39,24 @@ export default function LoginForm({ onSuccess, onClose }: LoginFormProps) {
     setSuccess('');
     setLoading(true);
 
+    const lowerEmail = email.trim().toLowerCase();
+
+    // Check email authorization BEFORE attempting login
+    if (!isAllowedAdminEmail(lowerEmail)) {
+      setAdminAuthenticated(false);
+      setError(`Access Denied: The account email "${email}" is not authorized for administrator access.`);
+      setLoading(false);
+      return;
+    }
+
     if (isFirebaseConfigured && auth) {
       // REAL FIREBASE SIGN IN
       try {
-        await signInWithEmailAndPassword(auth!, email.trim().toLowerCase(), password);
+        await signInWithEmailAndPassword(auth!, lowerEmail, password);
+        setAdminAuthenticated(true);
         onSuccess();
       } catch (err: any) {
+        setAdminAuthenticated(false);
         console.error('Firebase Auth Error:', err);
         let errorMsg = 'Failed to authenticate. Please check your credentials.';
         if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
@@ -59,12 +71,12 @@ export default function LoginForm({ onSuccess, onClose }: LoginFormProps) {
     } else {
       // SIMULATED LOGIN FOR PREVIEW
       setTimeout(() => {
-        const lowerEmail = email.trim().toLowerCase();
-        const allowed = ['priyewratsingh@gmail.com', 'priyewrat@gmail.com', 'solutionsneekers@gmail.com'];
-        if (allowed.includes(lowerEmail) && password === 'admin123') {
+        if (password === 'admin123') {
+          setAdminAuthenticated(true);
           onSuccess();
         } else {
-          setError('Invalid credentials.');
+          setAdminAuthenticated(false);
+          setError('Invalid password. Try password: admin123');
         }
         setLoading(false);
       }, 800);
@@ -78,10 +90,17 @@ export default function LoginForm({ onSuccess, onClose }: LoginFormProps) {
     setSuccess('');
     setLoading(true);
 
+    const lowerEmail = email.trim().toLowerCase();
+    if (!isAllowedAdminEmail(lowerEmail)) {
+      setError(`Access Denied: The email address "${email}" is not registered as an authorized administrator.`);
+      setLoading(false);
+      return;
+    }
+
     if (isFirebaseConfigured && auth) {
       // REAL FIREBASE PASSWORD RESET EMAIL
       try {
-        await sendPasswordResetEmail(auth!, email.trim().toLowerCase());
+        await sendPasswordResetEmail(auth!, lowerEmail);
         setSuccess(`A password reset link has been sent to ${email}. Please check your inbox.`);
       } catch (err: any) {
         console.error('Firebase Reset Password Error:', err);
@@ -116,16 +135,19 @@ export default function LoginForm({ onSuccess, onClose }: LoginFormProps) {
         const userCredential = await signInWithPopup(auth!, googleProvider!);
         const userEmail = userCredential.user?.email?.toLowerCase().trim();
 
-        if (!userEmail || !ALLOWED_GOOGLE_EMAILS.includes(userEmail)) {
-          // Immediately sign out unauthorized user
+        if (!userEmail || !isAllowedAdminEmail(userEmail)) {
+          // Immediately revoke local auth and sign out unauthorized user
+          setAdminAuthenticated(false);
           await signOut(auth!);
           setError(`Access Denied: The Google account "${userEmail || 'Unknown'}" is not authorized for administrator access.`);
           setLoading(false);
           return;
         }
 
+        setAdminAuthenticated(true);
         onSuccess();
       } catch (err: any) {
+        setAdminAuthenticated(false);
         console.error('Firebase Google Auth Error:', err);
         let errorMsg = err.message || 'Failed to authenticate via Google. Popup closed or blocked.';
         
@@ -152,22 +174,30 @@ export default function LoginForm({ onSuccess, onClose }: LoginFormProps) {
     setLoading(true);
     setMode('login');
     setTimeout(() => {
-      if (!ALLOWED_GOOGLE_EMAILS.includes(lowerEmail)) {
-        setError(`Access Denied: Google account "${selectedEmail}" is unauthorized. Access is strictly limited to priyewratsingh@gmail.com and priyewrat@gmail.com.`);
+      if (!isAllowedAdminEmail(lowerEmail)) {
+        setAdminAuthenticated(false);
+        setError(`Access Denied: Google account "${selectedEmail}" is unauthorized. Access is strictly limited to authorized administrators.`);
         setLoading(false);
         return;
       }
       setEmail(selectedEmail);
+      setAdminAuthenticated(true);
       onSuccess();
       setLoading(false);
     }, 600);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+      onClick={onClose}
+    >
       {/* Real Google Selector Simulation Overlay */}
       {mode === 'google_sim' && (
-        <div className="absolute inset-0 z-55 flex items-center justify-center bg-black/40 backdrop-blur-2xs p-4">
+        <div 
+          className="absolute inset-0 z-55 flex items-center justify-center bg-black/40 backdrop-blur-2xs p-4"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-6 sm:p-8 flex flex-col space-y-6">
             <div className="flex flex-col items-center text-center space-y-2">
               {/* Google multi-color G logo */}
@@ -236,9 +266,18 @@ export default function LoginForm({ onSuccess, onClose }: LoginFormProps) {
 
       {/* Main LoginForm Modal */}
       <div 
-        className="w-full max-w-md overflow-hidden bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl transition-all"
+        className="w-full max-w-md overflow-hidden bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl transition-all relative"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Top-Right X Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-white bg-zinc-100 dark:bg-zinc-850 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full transition cursor-pointer z-20"
+          title="Close login modal"
+        >
+          <X className="w-4 h-4" />
+        </button>
         <div className="p-6 sm:p-8">
           
           {/* Top Status Header */}
