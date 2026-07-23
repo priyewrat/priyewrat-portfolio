@@ -130,7 +130,7 @@ export default function App() {
               onClick={() => setViewMode('admin')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold transition ${
                 viewMode === 'admin' 
-                  ? 'bg-emerald-600 text-white shadow-sm' 
+                  ? 'bg-emerald-600 text-white shadow-sm cursor-pointer' 
                   : 'text-zinc-300 hover:text-white hover:bg-zinc-800'
               }`}
             >
@@ -143,7 +143,7 @@ export default function App() {
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold transition ${
                 viewMode === 'preview' 
                   ? 'bg-emerald-600 text-white shadow-sm' 
-                  : 'text-zinc-300 hover:text-white hover:bg-zinc-800'
+                  : 'text-zinc-300 hover:text-white hover:bg-zinc-800 cursor-pointer'
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
@@ -154,7 +154,7 @@ export default function App() {
 
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1 px-2.5 py-1 text-red-400 hover:text-red-300 hover:bg-red-950/20 rounded-lg font-semibold transition"
+              className="flex items-center gap-1 px-2.5 py-1 text-red-400 hover:text-red-300 hover:bg-red-950/20 rounded-lg font-semibold transition cursor-pointer"
               title="Logout session"
             >
               <LogOut className="w-3.5 h-3.5" />
