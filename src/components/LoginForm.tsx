@@ -64,7 +64,7 @@ export default function LoginForm({ onSuccess, onClose }: LoginFormProps) {
         if (allowed.includes(lowerEmail) && password === 'admin123') {
           onSuccess();
         } else {
-          setError('Invalid credentials. Allowed account emails: priyewratsingh@gmail.com or priyewrat@gmail.com (Password: admin123)');
+          setError('Invalid credentials.');
         }
         setLoading(false);
       }, 800);
@@ -119,7 +119,7 @@ export default function LoginForm({ onSuccess, onClose }: LoginFormProps) {
         if (!userEmail || !ALLOWED_GOOGLE_EMAILS.includes(userEmail)) {
           // Immediately sign out unauthorized user
           await signOut(auth!);
-          setError(`Access Denied: The Google account "${userEmail || 'Unknown'}" is not authorized for administrator access. Allowed accounts: priyewratsingh@gmail.com and priyewrat@gmail.com.`);
+          setError(`Access Denied: The Google account "${userEmail || 'Unknown'}" is not authorized for administrator access.`);
           setLoading(false);
           return;
         }
