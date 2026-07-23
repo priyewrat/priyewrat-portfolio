@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*", "./*"],
+      "firebase/app": [
+        "./node_modules/firebase/app/dist/app/index.d.ts",
+        "./node_modules/@firebase/app/dist/app-public.d.ts"
+      ],
+      "firebase/auth": [
+        "./node_modules/firebase/auth/dist/auth/index.d.ts",
+        "./node_modules/@firebase/auth/dist/auth-public.d.ts"
+      ],
+      "@firebase/app": ["./node_modules/@firebase/app/dist/app-public.d.ts"],
+      "@firebase/auth": ["./node_modules/@firebase/auth/dist/auth-public.d.ts"]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "ignoreDeprecations": "6.0"
+  }
+}

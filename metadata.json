@@ -1,0 +1,6 @@
+{
+  "name": "Priyewrat Portfolio",
+  "description": "A professional portfolio website for Priyewrat, including an admin dashboard to manage projects, experience, education, certifications, and skills.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
