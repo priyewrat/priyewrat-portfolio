@@ -524,7 +524,7 @@ export default function LoginForm({ onSuccess, onClose }: LoginFormProps) {
           )}
 
           {/* Sandbox mode notice block */}
-          {mode === 'login' && !isFirebaseConfigured && (
+          {/* {mode === 'login' && !isFirebaseConfigured && (
             <div className="mt-4 p-3 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-150 dark:border-zinc-850 rounded-xl text-[10px] text-zinc-500 dark:text-zinc-400 text-center">
               <span className="font-extrabold text-zinc-700 dark:text-zinc-300">Sandbox Quick Credentials:</span>
               <br />
@@ -532,7 +532,7 @@ export default function LoginForm({ onSuccess, onClose }: LoginFormProps) {
               <br />
               Password: <code className="text-zinc-800 dark:text-zinc-200">admin123</code>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Modal Footer Controls */}
