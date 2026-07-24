@@ -1,13 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  User, Briefcase, FolderGit, GraduationCap, Award, Mail, 
-  Plus, Trash2, Edit3, Check, X, FileText, Globe, MapPin, Phone, RefreshCw, Layers, Upload
-} from 'lucide-react';
-import { PortfolioData, Project, Experience, Education, Certification, Profile, JobType, Message } from '../types';
-import { getPortfolioData, savePortfolioData,  deleteMessage, markMessageAsRead, subscribeMessages, initPortfolioData } from '../lib/storage';
+import React, { useState, useEffect } from "react";
+import {
+  User,
+  Briefcase,
+  FolderGit,
+  GraduationCap,
+  Award,
+  Mail,
+  Plus,
+  Trash2,
+  Edit3,
+  Check,
+  X,
+  FileText,
+  Globe,
+  MapPin,
+  Phone,
+  RefreshCw,
+  Layers,
+  Upload,
+} from "lucide-react";
+import {
+  PortfolioData,
+  Project,
+  Experience,
+  Education,
+  Certification,
+  Profile,
+  JobType,
+  Message,
+} from "../types";
+import {
+  getPortfolioData,
+  savePortfolioData,
+  deleteMessage,
+  markMessageAsRead,
+  subscribeMessages,
+  initPortfolioData,
+} from "../lib/storage";
 
 // Helper to compress uploaded avatar images so they fit comfortably within Firestore document limits
-function compressImage(file: File, maxWidth = 400, maxHeight = 400, quality = 0.8): Promise<string> {
+function compressImage(
+  file: File,
+  maxWidth = 400,
+  maxHeight = 400,
+  quality = 0.8,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -30,16 +67,16 @@ function compressImage(file: File, maxWidth = 400, maxHeight = 400, quality = 0.
           }
         }
 
-        const canvas = document.createElement('canvas');
+        const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
         if (!ctx) {
           resolve(event.target?.result as string);
           return;
         }
         ctx.drawImage(img, 0, 0, width, height);
-        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        const compressedBase64 = canvas.toDataURL("image/jpeg", quality);
         resolve(compressedBase64);
       };
       img.onerror = (err) => reject(err);
@@ -53,15 +90,27 @@ interface AdminDashboardProps {
   onDataChange: () => void;
 }
 
-type AdminTab = 'profile' | 'projects' | 'experience' | 'education' | 'skills' | 'messages';
+type AdminTab =
+  | "profile"
+  | "projects"
+  | "experience"
+  | "education"
+  | "skills"
+  | "messages";
 
-export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboardProps) {
+export default function AdminDashboard({
+  onLogout,
+  onDataChange,
+}: AdminDashboardProps) {
   const [data, setData] = useState<PortfolioData | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [activeTab, setActiveTab] = useState<AdminTab>('profile');
-  
+  const [activeTab, setActiveTab] = useState<AdminTab>("profile");
+
   // Notification States
-  const [notification, setNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [notification, setNotification] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
 
   // Confirmation Modal State
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -84,12 +133,12 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     duration: string;
     bulletsText: string;
   }>({
-    role: '',
-    company: '',
-    location: '',
-    type: 'Full Time',
-    duration: '',
-    bulletsText: ''
+    role: "",
+    company: "",
+    location: "",
+    type: "Full Time",
+    duration: "",
+    bulletsText: "",
   });
   const [isEditingExp, setIsEditingExp] = useState(false);
 
@@ -104,13 +153,13 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     githubUrl: string;
     bulletsText: string;
   }>({
-    title: '',
-    description: '',
-    techText: '',
-    duration: '',
-    liveUrl: '',
-    githubUrl: '',
-    bulletsText: ''
+    title: "",
+    description: "",
+    techText: "",
+    duration: "",
+    liveUrl: "",
+    githubUrl: "",
+    bulletsText: "",
   });
   const [isEditingProj, setIsEditingProj] = useState(false);
 
@@ -123,11 +172,11 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     duration: string;
     score: string;
   }>({
-    degree: '',
-    institution: '',
-    location: '',
-    duration: '',
-    score: ''
+    degree: "",
+    institution: "",
+    location: "",
+    duration: "",
+    score: "",
   });
   const [isEditingEdu, setIsEditingEdu] = useState(false);
 
@@ -139,14 +188,14 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     year: string;
     url: string;
   }>({
-    name: '',
-    issuer: '',
-    year: '',
-    url: ''
+    name: "",
+    issuer: "",
+    year: "",
+    url: "",
   });
   const [isEditingCert, setIsEditingCert] = useState(false);
   const [isEditingSkill, setIsEditingSkill] = useState(false);
-  const [categoryMode, setCategoryMode] = useState<'select' | 'new'>('select');
+  const [categoryMode, setCategoryMode] = useState<"select" | "new">("select");
 
   // Skill form state
   const [skillForm, setSkillForm] = useState<{
@@ -154,29 +203,31 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     category: string;
     name: string;
   }>({
-    category: '',
-    name: ''
+    category: "",
+    name: "",
   });
 
   // Load initial data and subscribe to real-time Cloud updates
- useEffect(() => {
-  const unsubPortfolio = initPortfolioData((cloudPortfolio) => {
-    setData(cloudPortfolio);
-    setEditProfile((prev) => (prev ? prev : cloudPortfolio.profile));
-  });
+  useEffect(() => {
+    const unsubPortfolio = initPortfolioData((cloudPortfolio) => {
+      setData(cloudPortfolio);
+      setEditProfile((prev) => (prev ? prev : cloudPortfolio.profile));
+    });
 
-  const unsubMessages = subscribeMessages((updatedMsgs) => {
-    // sort newest first if needed
-    const sorted = [...updatedMsgs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    setMessages(sorted);
-  });
+    const unsubMessages = subscribeMessages((updatedMsgs) => {
+      // sort newest first if needed
+      const sorted = [...updatedMsgs].sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      );
+      setMessages(sorted);
+    });
 
-  return () => {
-    unsubPortfolio();
-    unsubMessages();
-  };
-}, []);
-
+    return () => {
+      unsubPortfolio();
+      unsubMessages();
+    };
+  }, []);
 
   const loadData = () => {
     const portfolio = getPortfolioData();
@@ -185,7 +236,10 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     // setMessages(getMessages());
   };
 
-  const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
+  const showNotification = (
+    text: string,
+    type: "success" | "error" = "success",
+  ) => {
     setNotification({ text, type });
     setTimeout(() => setNotification(null), 3000);
   };
@@ -193,14 +247,14 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !editProfile) return;
-    
-    if (!file.type.startsWith('image/')) {
-      showNotification('Please select an image file', 'error');
+
+    if (!file.type.startsWith("image/")) {
+      showNotification("Please select an image file", "error");
       return;
     }
-    
+
     if (file.size > 5 * 1024 * 1024) {
-      showNotification('Image size should be less than 5MB', 'error');
+      showNotification("Image size should be less than 5MB", "error");
       return;
     }
 
@@ -208,24 +262,24 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
       const compressedBase64 = await compressImage(file, 400, 400, 0.8);
       setEditProfile({
         ...editProfile,
-        avatarUrl: compressedBase64
+        avatarUrl: compressedBase64,
       });
-      showNotification('Profile picture updated & optimized!');
+      showNotification("Profile picture updated & optimized!");
     } catch (err) {
-      console.error('Failed to process image:', err);
-      showNotification('Failed to process image', 'error');
+      console.error("Failed to process image:", err);
+      showNotification("Failed to process image", "error");
     }
   };
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!data || !editProfile) return;
-    
+
     const updatedData = { ...data, profile: editProfile };
     setData(updatedData);
     savePortfolioData(updatedData);
     onDataChange();
-    showNotification('Profile updated successfully!');
+    showNotification("Profile updated successfully!");
   };
 
   // Experience actions
@@ -234,42 +288,44 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     if (!data) return;
 
     const bullets = expForm.bulletsText
-      .split('\n')
-      .map(b => b.trim())
-      .filter(b => b.length > 0);
+      .split("\n")
+      .map((b) => b.trim())
+      .filter((b) => b.length > 0);
 
     const newExp: Experience = {
-      id: expForm.id || 'exp_' + Math.random().toString(36).slice(2, 11),
+      id: expForm.id || "exp_" + Math.random().toString(36).slice(2, 11),
       role: expForm.role,
       company: expForm.company,
       location: expForm.location,
       type: expForm.type,
       duration: expForm.duration,
-      bullets
+      bullets,
     };
 
     let updatedExperiences = [...data.experiences];
     if (expForm.id) {
-      updatedExperiences = updatedExperiences.map(exp => exp.id === expForm.id ? newExp : exp);
-      showNotification('Experience updated successfully!');
+      updatedExperiences = updatedExperiences.map((exp) =>
+        exp.id === expForm.id ? newExp : exp,
+      );
+      showNotification("Experience updated successfully!");
     } else {
       updatedExperiences.unshift(newExp);
-      showNotification('New experience added successfully!');
+      showNotification("New experience added successfully!");
     }
 
     const updatedData = { ...data, experiences: updatedExperiences };
     setData(updatedData);
     savePortfolioData(updatedData);
     onDataChange();
-    
+
     // Reset Form
     setExpForm({
-      role: '',
-      company: '',
-      location: '',
-      type: 'Full Time',
-      duration: '',
-      bulletsText: ''
+      role: "",
+      company: "",
+      location: "",
+      type: "Full Time",
+      duration: "",
+      bulletsText: "",
     });
     setIsEditingExp(false);
   };
@@ -282,29 +338,32 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
       location: exp.location,
       type: exp.type,
       duration: exp.duration,
-      bulletsText: exp.bullets.join('\n')
+      bulletsText: exp.bullets.join("\n"),
     });
     setIsEditingExp(true);
     // scroll to form
-    const element = document.getElementById('exp-form-container');
-    if (element) element.scrollIntoView({ behavior: 'smooth' });
+    const element = document.getElementById("exp-form-container");
+    if (element) element.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleDeleteExp = (id: string) => {
     if (!data) return;
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Experience',
-      message: 'Are you sure you want to delete this experience entry? This action cannot be undone.',
+      title: "Delete Experience",
+      message:
+        "Are you sure you want to delete this experience entry? This action cannot be undone.",
       onConfirm: () => {
-        const updatedExperiences = data.experiences.filter(exp => exp.id !== id);
+        const updatedExperiences = data.experiences.filter(
+          (exp) => exp.id !== id,
+        );
         const updatedData = { ...data, experiences: updatedExperiences };
         setData(updatedData);
         savePortfolioData(updatedData);
         onDataChange();
-        showNotification('Experience deleted.');
+        showNotification("Experience deleted.");
         setConfirmDialog(null);
-      }
+      },
     });
   };
 
@@ -314,33 +373,37 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     if (!data) return;
 
     const bullets = projForm.bulletsText
-      .split('\n')
-      .map(b => b.trim())
-      .filter(b => b.length > 0);
+      .split("\n")
+      .map((b) => b.trim())
+      .filter((b) => b.length > 0);
 
     const technologies = projForm.techText
-      .split(',')
-      .map(t => t.trim())
-      .filter(t => t.length > 0);
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
 
     const newProj: Project = {
-      id: projForm.id || 'proj_' + Math.random().toString(36).slice(2, 11),
+      id: projForm.id || "proj_" + Math.random().toString(36).slice(2, 11),
       title: projForm.title,
       description: projForm.description,
       technologies,
       duration: projForm.duration,
-      liveUrl: projForm.liveUrl || undefined,
-      githubUrl: projForm.githubUrl || undefined,
-      bullets
+      bullets,
     };
+
+    // Only append URLs to the object if they actually contain text
+    if (projForm.liveUrl) newProj.liveUrl = projForm.liveUrl;
+    if (projForm.githubUrl) newProj.githubUrl = projForm.githubUrl;
 
     let updatedProjects = [...data.projects];
     if (projForm.id) {
-      updatedProjects = updatedProjects.map(p => p.id === projForm.id ? newProj : p);
-      showNotification('Project updated successfully!');
+      updatedProjects = updatedProjects.map((p) =>
+        p.id === projForm.id ? newProj : p,
+      );
+      showNotification("Project updated successfully!");
     } else {
       updatedProjects.unshift(newProj);
-      showNotification('New project added successfully!');
+      showNotification("New project added successfully!");
     }
 
     const updatedData = { ...data, projects: updatedProjects };
@@ -350,13 +413,13 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
     // Reset
     setProjForm({
-      title: '',
-      description: '',
-      techText: '',
-      duration: '',
-      liveUrl: '',
-      githubUrl: '',
-      bulletsText: ''
+      title: "",
+      description: "",
+      techText: "",
+      duration: "",
+      liveUrl: "",
+      githubUrl: "",
+      bulletsText: "",
     });
     setIsEditingProj(false);
   };
@@ -366,32 +429,33 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
       id: p.id,
       title: p.title,
       description: p.description,
-      techText: p.technologies.join(', '),
+      techText: p.technologies.join(", "),
       duration: p.duration,
-      liveUrl: p.liveUrl || '',
-      githubUrl: p.githubUrl || '',
-      bulletsText: p.bullets.join('\n')
+      liveUrl: p.liveUrl || "",
+      githubUrl: p.githubUrl || "",
+      bulletsText: p.bullets.join("\n"),
     });
     setIsEditingProj(true);
-    const element = document.getElementById('proj-form-container');
-    if (element) element.scrollIntoView({ behavior: 'smooth' });
+    const element = document.getElementById("proj-form-container");
+    if (element) element.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleDeleteProj = (id: string) => {
     if (!data) return;
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Project',
-      message: 'Are you sure you want to delete this project? This action cannot be undone.',
+      title: "Delete Project",
+      message:
+        "Are you sure you want to delete this project? This action cannot be undone.",
       onConfirm: () => {
-        const updatedProjects = data.projects.filter(p => p.id !== id);
+        const updatedProjects = data.projects.filter((p) => p.id !== id);
         const updatedData = { ...data, projects: updatedProjects };
         setData(updatedData);
         savePortfolioData(updatedData);
         onDataChange();
-        showNotification('Project deleted.');
+        showNotification("Project deleted.");
         setConfirmDialog(null);
-      }
+      },
     });
   };
 
@@ -401,21 +465,23 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     if (!data) return;
 
     const newEdu: Education = {
-      id: eduForm.id || 'edu_' + Math.random().toString(36).slice(2, 11),
+      id: eduForm.id || "edu_" + Math.random().toString(36).slice(2, 11),
       degree: eduForm.degree,
       institution: eduForm.institution,
       location: eduForm.location,
       duration: eduForm.duration,
-      score: eduForm.score
+      score: eduForm.score,
     };
 
     let updatedEdu = [...data.educations];
     if (eduForm.id) {
-      updatedEdu = updatedEdu.map(edu => edu.id === eduForm.id ? newEdu : edu);
-      showNotification('Education updated successfully!');
+      updatedEdu = updatedEdu.map((edu) =>
+        edu.id === eduForm.id ? newEdu : edu,
+      );
+      showNotification("Education updated successfully!");
     } else {
       updatedEdu.push(newEdu);
-      showNotification('Education details added!');
+      showNotification("Education details added!");
     }
 
     const updatedData = { ...data, educations: updatedEdu };
@@ -423,7 +489,13 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     savePortfolioData(updatedData);
     onDataChange();
 
-    setEduForm({ degree: '', institution: '', location: '', duration: '', score: '' });
+    setEduForm({
+      degree: "",
+      institution: "",
+      location: "",
+      duration: "",
+      score: "",
+    });
     setIsEditingEdu(false);
   };
 
@@ -431,17 +503,18 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     if (!data) return;
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Education Entry',
-      message: 'Are you sure you want to delete this education entry? This action cannot be undone.',
+      title: "Delete Education Entry",
+      message:
+        "Are you sure you want to delete this education entry? This action cannot be undone.",
       onConfirm: () => {
-        const updatedEdu = data.educations.filter(edu => edu.id !== id);
+        const updatedEdu = data.educations.filter((edu) => edu.id !== id);
         const updatedData = { ...data, educations: updatedEdu };
         setData(updatedData);
         savePortfolioData(updatedData);
         onDataChange();
-        showNotification('Education deleted.');
+        showNotification("Education deleted.");
         setConfirmDialog(null);
-      }
+      },
     });
   };
 
@@ -452,7 +525,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
       institution: edu.institution,
       location: edu.location,
       duration: edu.duration,
-      score: edu.score
+      score: edu.score,
     });
     setIsEditingEdu(true);
   };
@@ -466,17 +539,21 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
       id: certForm.id || 'cert_' + Math.random().toString(36).slice(2, 11),
       name: certForm.name,
       issuer: certForm.issuer,
-      year: certForm.year,
-      url: certForm.url || undefined
+      year: certForm.year
     };
+    
+    // Only append the URL if it contains text
+    if (certForm.url) newCert.url = certForm.url;
 
     let updatedCert = [...data.certifications];
     if (certForm.id) {
-      updatedCert = updatedCert.map(c => c.id === certForm.id ? newCert : c);
-      showNotification('Certification updated!');
+      updatedCert = updatedCert.map((c) =>
+        c.id === certForm.id ? newCert : c,
+      );
+      showNotification("Certification updated!");
     } else {
       updatedCert.push(newCert);
-      showNotification('New certification added!');
+      showNotification("New certification added!");
     }
 
     const updatedData = { ...data, certifications: updatedCert };
@@ -484,7 +561,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     savePortfolioData(updatedData);
     onDataChange();
 
-    setCertForm({ name: '', issuer: '', year: '', url: '' });
+    setCertForm({ name: "", issuer: "", year: "", url: "" });
     setIsEditingCert(false);
   };
 
@@ -494,7 +571,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
       name: cert.name,
       issuer: cert.issuer,
       year: cert.year,
-      url: cert.url || ''
+      url: cert.url || "",
     });
     setIsEditingCert(true);
   };
@@ -503,17 +580,18 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     if (!data) return;
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Certification',
-      message: 'Are you sure you want to delete this certification? This action cannot be undone.',
+      title: "Delete Certification",
+      message:
+        "Are you sure you want to delete this certification? This action cannot be undone.",
       onConfirm: () => {
-        const updatedCert = data.certifications.filter(c => c.id !== id);
+        const updatedCert = data.certifications.filter((c) => c.id !== id);
         const updatedData = { ...data, certifications: updatedCert };
         setData(updatedData);
         savePortfolioData(updatedData);
         onDataChange();
-        showNotification('Certification deleted.');
+        showNotification("Certification deleted.");
         setConfirmDialog(null);
-      }
+      },
     });
   };
 
@@ -523,18 +601,20 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     if (!data || !skillForm.category || !skillForm.name) return;
 
     const newSkill = {
-      id: skillForm.id || 'skill_' + Math.random().toString(36).substr(2, 9),
+      id: skillForm.id || "skill_" + Math.random().toString(36).substr(2, 9),
       category: skillForm.category.trim(),
-      name: skillForm.name.trim()
+      name: skillForm.name.trim(),
     };
 
     let updatedSkills = [...data.skills];
     if (skillForm.id) {
-      updatedSkills = updatedSkills.map(s => s.id === skillForm.id ? newSkill : s);
-      showNotification('Skill updated successfully!');
+      updatedSkills = updatedSkills.map((s) =>
+        s.id === skillForm.id ? newSkill : s,
+      );
+      showNotification("Skill updated successfully!");
     } else {
       updatedSkills.push(newSkill);
-      showNotification('Skill added successfully!');
+      showNotification("Skill added successfully!");
     }
 
     const updatedData = { ...data, skills: updatedSkills };
@@ -542,7 +622,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     savePortfolioData(updatedData);
     onDataChange();
 
-    setSkillForm({ category: '', name: '' });
+    setSkillForm({ category: "", name: "" });
     setIsEditingSkill(false);
   };
 
@@ -550,9 +630,9 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     setSkillForm({
       id: skill.id,
       category: skill.category,
-      name: skill.name
+      name: skill.name,
     });
-    setCategoryMode('select');
+    setCategoryMode("select");
     setIsEditingSkill(true);
   };
 
@@ -560,17 +640,18 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     if (!data) return;
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Skill',
-      message: 'Are you sure you want to delete this skill? This action cannot be undone.',
+      title: "Delete Skill",
+      message:
+        "Are you sure you want to delete this skill? This action cannot be undone.",
       onConfirm: () => {
-        const updatedSkills = data.skills.filter(s => s.id !== id);
+        const updatedSkills = data.skills.filter((s) => s.id !== id);
         const updatedData = { ...data, skills: updatedSkills };
         setData(updatedData);
         savePortfolioData(updatedData);
         onDataChange();
-        showNotification('Skill deleted.');
+        showNotification("Skill deleted.");
         setConfirmDialog(null);
-      }
+      },
     });
   };
 
@@ -579,8 +660,8 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     const trimmedNew = newCategory.trim();
     if (!trimmedNew || trimmedNew === oldCategory) return;
 
-    const updatedSkills = data.skills.map(s => 
-      s.category === oldCategory ? { ...s, category: trimmedNew } : s
+    const updatedSkills = data.skills.map((s) =>
+      s.category === oldCategory ? { ...s, category: trimmedNew } : s,
     );
 
     const updatedData = { ...data, skills: updatedSkills };
@@ -594,17 +675,19 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     if (!data) return;
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Section',
+      title: "Delete Section",
       message: `Are you sure you want to delete the "${category}" section and all skills inside it? This action cannot be undone.`,
       onConfirm: () => {
-        const updatedSkills = data.skills.filter(s => s.category !== category);
+        const updatedSkills = data.skills.filter(
+          (s) => s.category !== category,
+        );
         const updatedData = { ...data, skills: updatedSkills };
         setData(updatedData);
         savePortfolioData(updatedData);
         onDataChange();
         showNotification(`Section "${category}" deleted.`);
         setConfirmDialog(null);
-      }
+      },
     });
   };
 
@@ -612,38 +695,42 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
   const handleMarkAsRead = (id: string) => {
     markMessageAsRead(id);
     // setMessages(getMessages());
-    showNotification('Message marked as read.');
+    showNotification("Message marked as read.");
   };
 
   const handleDeleteMessage = (id: string) => {
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Visitor Inquiry',
-      message: 'Are you sure you want to delete this visitor inquiry? This action cannot be undone.',
+      title: "Delete Visitor Inquiry",
+      message:
+        "Are you sure you want to delete this visitor inquiry? This action cannot be undone.",
       onConfirm: () => {
         deleteMessage(id);
         // setMessages(getMessages());
-        showNotification('Message deleted from inbox.');
+        showNotification("Message deleted from inbox.");
         setConfirmDialog(null);
-      }
+      },
     });
   };
 
-  const unreadCount = messages.filter(m => !m.read).length;
-  const uniqueCategories = data ? (Array.from(new Set(data.skills.map(s => s.category))) as string[]) : [];
+  const unreadCount = messages.filter((m) => !m.read).length;
+  const uniqueCategories = data
+    ? (Array.from(new Set(data.skills.map((s) => s.category))) as string[])
+    : [];
 
   if (!data || !editProfile) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin" />
-        <p className="mt-4 text-zinc-500 dark:text-zinc-400 text-sm">Loading resume dashboard...</p>
+        <p className="mt-4 text-zinc-500 dark:text-zinc-400 text-sm">
+          Loading resume dashboard...
+        </p>
       </div>
     );
   }
 
   return (
     <div className="relative min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 pb-20">
-      
       {/* Banner/Header */}
       <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -652,13 +739,18 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
               <span className="px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-950/40 rounded">
                 Admin
               </span>
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Portfolio Dashboard</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+                Portfolio Dashboard
+              </h1>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Currently managing details for <span className="font-semibold text-emerald-600">{data.profile.name}</span>
+              Currently managing details for{" "}
+              <span className="font-semibold text-emerald-600">
+                {data.profile.name}
+              </span>
             </p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <button
               onClick={loadData}
@@ -687,74 +779,75 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
           {/* Navigation Sidebar */}
           <div className="lg:col-span-3 space-y-2 bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-            <h3 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-3 mb-3">Sections</h3>
+            <h3 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-3 mb-3">
+              Sections
+            </h3>
             <button
-              onClick={() => setActiveTab('profile')}
+              onClick={() => setActiveTab("profile")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all ${
-                activeTab === 'profile' 
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' 
-                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                activeTab === "profile"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               }`}
             >
               <User className="w-4 h-4" />
               <span>Bio Profile</span>
             </button>
             <button
-              onClick={() => setActiveTab('projects')}
+              onClick={() => setActiveTab("projects")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all ${
-                activeTab === 'projects' 
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' 
-                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                activeTab === "projects"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               }`}
             >
               <FolderGit className="w-4 h-4" />
               <span>Projects ({data.projects.length})</span>
             </button>
             <button
-              onClick={() => setActiveTab('experience')}
+              onClick={() => setActiveTab("experience")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all ${
-                activeTab === 'experience' 
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' 
-                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                activeTab === "experience"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               }`}
             >
               <Briefcase className="w-4 h-4" />
               <span>Experience ({data.experiences.length})</span>
             </button>
             <button
-              onClick={() => setActiveTab('education')}
+              onClick={() => setActiveTab("education")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all ${
-                activeTab === 'education' 
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' 
-                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                activeTab === "education"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               }`}
             >
               <GraduationCap className="w-4 h-4" />
               <span>Education & Certificates</span>
             </button>
             <button
-              onClick={() => setActiveTab('skills')}
+              onClick={() => setActiveTab("skills")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all ${
-                activeTab === 'skills' 
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' 
-                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                activeTab === "skills"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               }`}
             >
               <Layers className="w-4 h-4" />
               <span>Skills & Sections ({data.skills.length})</span>
             </button>
-            
+
             <div className="border-t border-zinc-150 dark:border-zinc-800 my-3"></div>
-            
+
             <button
-              onClick={() => setActiveTab('messages')}
+              onClick={() => setActiveTab("messages")}
               className={`w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold rounded-xl transition-all ${
-                activeTab === 'messages' 
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' 
-                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                activeTab === "messages"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                  : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -771,69 +864,105 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
           {/* Active Panel Content */}
           <div className="lg:col-span-9">
-            
             {/* 1. Profile Panel */}
-            {activeTab === 'profile' && (
+            {activeTab === "profile" && (
               <div className="space-y-6">
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs">
                   <div className="flex items-center gap-3 mb-6">
                     <User className="w-5 h-5 text-emerald-500" />
-                    <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Bio Information</h2>
+                    <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
+                      Bio Information
+                    </h2>
                   </div>
 
                   <form onSubmit={handleSaveProfile} className="space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                          Full Name
+                        </label>
                         <input
                           type="text"
                           required
                           value={editProfile.name}
-                          onChange={(e) => setEditProfile({ ...editProfile, name: e.target.value })}
+                          onChange={(e) =>
+                            setEditProfile({
+                              ...editProfile,
+                              name: e.target.value,
+                            })
+                          }
                           className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Professional Title</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                          Professional Title
+                        </label>
                         <input
                           type="text"
                           required
                           value={editProfile.title}
-                          onChange={(e) => setEditProfile({ ...editProfile, title: e.target.value })}
+                          onChange={(e) =>
+                            setEditProfile({
+                              ...editProfile,
+                              title: e.target.value,
+                            })
+                          }
                           className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Contact Email</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                          Contact Email
+                        </label>
                         <input
                           type="email"
                           required
                           value={editProfile.email}
-                          onChange={(e) => setEditProfile({ ...editProfile, email: e.target.value })}
+                          onChange={(e) =>
+                            setEditProfile({
+                              ...editProfile,
+                              email: e.target.value,
+                            })
+                          }
                           className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Phone Number</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                          Phone Number
+                        </label>
                         <input
                           type="text"
                           required
                           value={editProfile.phone}
-                          onChange={(e) => setEditProfile({ ...editProfile, phone: e.target.value })}
+                          onChange={(e) =>
+                            setEditProfile({
+                              ...editProfile,
+                              phone: e.target.value,
+                            })
+                          }
                           className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Location</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                          Location
+                        </label>
                         <input
                           type="text"
                           required
                           value={editProfile.location}
-                          onChange={(e) => setEditProfile({ ...editProfile, location: e.target.value })}
+                          onChange={(e) =>
+                            setEditProfile({
+                              ...editProfile,
+                              location: e.target.value,
+                            })
+                          }
                           className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
@@ -842,28 +971,33 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                         <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
                           Profile Photo & Avatar Settings
                         </label>
-                        
+
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
                           {/* Current Preview */}
                           <div className="relative group/avatar flex-shrink-0">
                             <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 border-2 border-emerald-500/20 shadow-md">
                               {editProfile.avatarUrl ? (
-                                <img 
-                                  src={editProfile.avatarUrl} 
-                                  alt="Preview" 
+                                <img
+                                  src={editProfile.avatarUrl}
+                                  alt="Preview"
                                   className="w-full h-full object-cover"
                                   referrerPolicy="no-referrer"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-extrabold text-xl">
-                                  {editProfile.name ? editProfile.name[0] : 'P'}
+                                  {editProfile.name ? editProfile.name[0] : "P"}
                                 </div>
                               )}
                             </div>
                             {editProfile.avatarUrl && (
                               <button
                                 type="button"
-                                onClick={() => setEditProfile({ ...editProfile, avatarUrl: '' })}
+                                onClick={() =>
+                                  setEditProfile({
+                                    ...editProfile,
+                                    avatarUrl: "",
+                                  })
+                                }
                                 className="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-md transition-all hover:scale-110"
                                 title="Remove Profile Picture"
                               >
@@ -879,14 +1013,14 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                               <label className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-850 text-zinc-700 dark:text-zinc-300 font-semibold text-sm rounded-xl cursor-pointer transition shadow-xs">
                                 <Upload className="w-4 h-4 text-emerald-500" />
                                 <span>Upload Image File</span>
-                                <input 
-                                  type="file" 
-                                  accept="image/*" 
-                                  onChange={handleImageUpload} 
-                                  className="hidden" 
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleImageUpload}
+                                  className="hidden"
                                 />
                               </label>
-                              
+
                               {/* Tip message */}
                               <span className="text-[10px] text-zinc-400 dark:text-zinc-500 flex items-center">
                                 Max 2MB (JPG, PNG, WEBP)
@@ -899,8 +1033,13 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                               </div>
                               <input
                                 type="url"
-                                value={editProfile.avatarUrl || ''}
-                                onChange={(e) => setEditProfile({ ...editProfile, avatarUrl: e.target.value })}
+                                value={editProfile.avatarUrl || ""}
+                                onChange={(e) =>
+                                  setEditProfile({
+                                    ...editProfile,
+                                    avatarUrl: e.target.value,
+                                  })
+                                }
                                 placeholder="Or enter a custom image URL (e.g., Unsplash/GitHub URL)"
                                 className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                               />
@@ -910,35 +1049,56 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">LinkedIn Profile URL</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                          LinkedIn Profile URL
+                        </label>
                         <input
                           type="url"
                           required
                           value={editProfile.linkedin}
-                          onChange={(e) => setEditProfile({ ...editProfile, linkedin: e.target.value })}
+                          onChange={(e) =>
+                            setEditProfile({
+                              ...editProfile,
+                              linkedin: e.target.value,
+                            })
+                          }
                           className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">GitHub Profile URL</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                          GitHub Profile URL
+                        </label>
                         <input
                           type="url"
                           required
                           value={editProfile.github}
-                          onChange={(e) => setEditProfile({ ...editProfile, github: e.target.value })}
+                          onChange={(e) =>
+                            setEditProfile({
+                              ...editProfile,
+                              github: e.target.value,
+                            })
+                          }
                           className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Professional Summary</label>
+                      <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                        Professional Summary
+                      </label>
                       <textarea
                         required
                         rows={6}
                         value={editProfile.summary}
-                        onChange={(e) => setEditProfile({ ...editProfile, summary: e.target.value })}
+                        onChange={(e) =>
+                          setEditProfile({
+                            ...editProfile,
+                            summary: e.target.value,
+                          })
+                        }
                         className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white font-sans leading-relaxed"
                       />
                     </div>
@@ -957,23 +1117,35 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
             )}
 
             {/* 2. Projects Panel */}
-            {activeTab === 'projects' && (
+            {activeTab === "projects" && (
               <div className="space-y-8">
-                
                 {/* Add/Edit Project Form */}
-                <div id="proj-form-container" className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs">
+                <div
+                  id="proj-form-container"
+                  className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs"
+                >
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-3">
                       <FolderGit className="w-5 h-5 text-emerald-500" />
                       <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
-                        {projForm.id ? 'Edit Project Details' : 'Add New Project'}
+                        {projForm.id
+                          ? "Edit Project Details"
+                          : "Add New Project"}
                       </h2>
                     </div>
                     {isEditingProj && (
                       <button
                         type="button"
                         onClick={() => {
-                          setProjForm({ title: '', description: '', techText: '', duration: '', liveUrl: '', githubUrl: '', bulletsText: '' });
+                          setProjForm({
+                            title: "",
+                            description: "",
+                            techText: "",
+                            duration: "",
+                            liveUrl: "",
+                            githubUrl: "",
+                            bulletsText: "",
+                          });
                           setIsEditingProj(false);
                         }}
                         className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white flex items-center gap-1 font-semibold"
@@ -986,36 +1158,54 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                   <form onSubmit={handleSaveProj} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Project Title</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                          Project Title
+                        </label>
                         <input
                           type="text"
                           required
                           value={projForm.title}
-                          onChange={(e) => setProjForm({ ...projForm, title: e.target.value })}
+                          onChange={(e) =>
+                            setProjForm({ ...projForm, title: e.target.value })
+                          }
                           placeholder="e.g. AI Content Writer"
                           className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Project Period / Duration</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                          Project Period / Duration
+                        </label>
                         <input
                           type="text"
                           required
                           value={projForm.duration}
-                          onChange={(e) => setProjForm({ ...projForm, duration: e.target.value })}
+                          onChange={(e) =>
+                            setProjForm({
+                              ...projForm,
+                              duration: e.target.value,
+                            })
+                          }
                           placeholder="e.g. Dec 2025 - Mar 2026 or Ongoing"
                           className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Technologies used (Comma separated)</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                          Technologies used (Comma separated)
+                        </label>
                         <input
                           type="text"
                           required
                           value={projForm.techText}
-                          onChange={(e) => setProjForm({ ...projForm, techText: e.target.value })}
+                          onChange={(e) =>
+                            setProjForm({
+                              ...projForm,
+                              techText: e.target.value,
+                            })
+                          }
                           placeholder="React.js, Tailwind CSS, Firebase, Express"
                           className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
@@ -1023,21 +1213,35 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Live URL (Optional)</label>
+                          <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                            Live URL (Optional)
+                          </label>
                           <input
                             type="url"
                             value={projForm.liveUrl}
-                            onChange={(e) => setProjForm({ ...projForm, liveUrl: e.target.value })}
+                            onChange={(e) =>
+                              setProjForm({
+                                ...projForm,
+                                liveUrl: e.target.value,
+                              })
+                            }
                             placeholder="https://..."
                             className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">GitHub Repo URL (Optional)</label>
+                          <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                            GitHub Repo URL (Optional)
+                          </label>
                           <input
                             type="url"
                             value={projForm.githubUrl}
-                            onChange={(e) => setProjForm({ ...projForm, githubUrl: e.target.value })}
+                            onChange={(e) =>
+                              setProjForm({
+                                ...projForm,
+                                githubUrl: e.target.value,
+                              })
+                            }
                             placeholder="https://github.com/..."
                             className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                           />
@@ -1046,12 +1250,19 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Short Description</label>
+                      <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                        Short Description
+                      </label>
                       <input
                         type="text"
                         required
                         value={projForm.description}
-                        onChange={(e) => setProjForm({ ...projForm, description: e.target.value })}
+                        onChange={(e) =>
+                          setProjForm({
+                            ...projForm,
+                            description: e.target.value,
+                          })
+                        }
                         placeholder="Provide a quick one-sentence summary explaining what this project does."
                         className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                       />
@@ -1065,7 +1276,12 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                         required
                         rows={4}
                         value={projForm.bulletsText}
-                        onChange={(e) => setProjForm({ ...projForm, bulletsText: e.target.value })}
+                        onChange={(e) =>
+                          setProjForm({
+                            ...projForm,
+                            bulletsText: e.target.value,
+                          })
+                        }
                         placeholder="e.g. Engineered FastAPI routes lowering response latency by 40%&#10;Designed secure MongoDB database layout"
                         className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white font-sans"
                       />
@@ -1076,7 +1292,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                         type="submit"
                         className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition"
                       >
-                        {projForm.id ? 'Save Updates' : 'Add Project Card'}
+                        {projForm.id ? "Save Updates" : "Add Project Card"}
                       </button>
                     </div>
                   </form>
@@ -1084,25 +1300,41 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
                 {/* Project List */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Current Project Cards</h3>
+                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
+                    Current Project Cards
+                  </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {data.projects.map((p) => (
-                      <div key={p.id} className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex flex-col justify-between shadow-xs">
+                      <div
+                        key={p.id}
+                        className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex flex-col justify-between shadow-xs"
+                      >
                         <div>
                           <div className="flex justify-between items-start gap-2">
-                            <h4 className="font-bold text-zinc-900 dark:text-white line-clamp-1">{p.title}</h4>
-                            <span className="text-2xs text-zinc-400 dark:text-zinc-500 font-mono whitespace-nowrap">{p.duration}</span>
+                            <h4 className="font-bold text-zinc-900 dark:text-white line-clamp-1">
+                              {p.title}
+                            </h4>
+                            <span className="text-2xs text-zinc-400 dark:text-zinc-500 font-mono whitespace-nowrap">
+                              {p.duration}
+                            </span>
                           </div>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2">{p.description}</p>
-                          
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2">
+                            {p.description}
+                          </p>
+
                           <div className="flex flex-wrap gap-1 mt-3">
                             {p.technologies.slice(0, 4).map((tech, i) => (
-                              <span key={i} className="px-2 py-0.5 text-3xs font-medium rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                              <span
+                                key={i}
+                                className="px-2 py-0.5 text-3xs font-medium rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                              >
                                 {tech}
                               </span>
                             ))}
                             {p.technologies.length > 4 && (
-                              <span className="px-1 py-0.5 text-3xs font-medium text-zinc-400">+{p.technologies.length - 4}</span>
+                              <span className="px-1 py-0.5 text-3xs font-medium text-zinc-400">
+                                +{p.technologies.length - 4}
+                              </span>
                             )}
                           </div>
                         </div>
@@ -1129,28 +1361,38 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                     ))}
                   </div>
                 </div>
-
               </div>
             )}
 
             {/* 3. Experiences Panel */}
-            {activeTab === 'experience' && (
+            {activeTab === "experience" && (
               <div className="space-y-8">
-                
                 {/* Add/Edit Experience Form */}
-                <div id="exp-form-container" className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs">
+                <div
+                  id="exp-form-container"
+                  className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs"
+                >
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-3">
                       <Briefcase className="w-5 h-5 text-emerald-500" />
                       <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
-                        {expForm.id ? 'Edit Experience Details' : 'Add Professional Experience'}
+                        {expForm.id
+                          ? "Edit Experience Details"
+                          : "Add Professional Experience"}
                       </h2>
                     </div>
                     {isEditingExp && (
                       <button
                         type="button"
                         onClick={() => {
-                          setExpForm({ role: '', company: '', location: '', type: 'Full Time', duration: '', bulletsText: '' });
+                          setExpForm({
+                            role: "",
+                            company: "",
+                            location: "",
+                            type: "Full Time",
+                            duration: "",
+                            bulletsText: "",
+                          });
                           setIsEditingExp(false);
                         }}
                         className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white flex items-center gap-1 font-semibold"
@@ -1163,36 +1405,48 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                   <form onSubmit={handleSaveExp} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Job Role / Designation</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                          Job Role / Designation
+                        </label>
                         <input
                           type="text"
                           required
                           value={expForm.role}
-                          onChange={(e) => setExpForm({ ...expForm, role: e.target.value })}
+                          onChange={(e) =>
+                            setExpForm({ ...expForm, role: e.target.value })
+                          }
                           placeholder="e.g. Senior Full Stack Engineer"
                           className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Company / Institution Name</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                          Company / Institution Name
+                        </label>
                         <input
                           type="text"
                           required
                           value={expForm.company}
-                          onChange={(e) => setExpForm({ ...expForm, company: e.target.value })}
+                          onChange={(e) =>
+                            setExpForm({ ...expForm, company: e.target.value })
+                          }
                           placeholder="e.g. Google AI Studio, IIT Bombay"
                           className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Location</label>
+                        <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                          Location
+                        </label>
                         <input
                           type="text"
                           required
                           value={expForm.location}
-                          onChange={(e) => setExpForm({ ...expForm, location: e.target.value })}
+                          onChange={(e) =>
+                            setExpForm({ ...expForm, location: e.target.value })
+                          }
                           placeholder="e.g. Remote, Patna, India"
                           className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
@@ -1200,10 +1454,17 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Employment Type</label>
+                          <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                            Employment Type
+                          </label>
                           <select
                             value={expForm.type}
-                            onChange={(e) => setExpForm({ ...expForm, type: e.target.value as JobType })}
+                            onChange={(e) =>
+                              setExpForm({
+                                ...expForm,
+                                type: e.target.value as JobType,
+                              })
+                            }
                             className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                           >
                             <option value="Full Time">Full Time</option>
@@ -1213,12 +1474,19 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Work Period</label>
+                          <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                            Work Period
+                          </label>
                           <input
                             type="text"
                             required
                             value={expForm.duration}
-                            onChange={(e) => setExpForm({ ...expForm, duration: e.target.value })}
+                            onChange={(e) =>
+                              setExpForm({
+                                ...expForm,
+                                duration: e.target.value,
+                              })
+                            }
                             placeholder="e.g. Jul 2026 - Present"
                             className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                           />
@@ -1234,7 +1502,12 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                         required
                         rows={4}
                         value={expForm.bulletsText}
-                        onChange={(e) => setExpForm({ ...expForm, bulletsText: e.target.value })}
+                        onChange={(e) =>
+                          setExpForm({
+                            ...expForm,
+                            bulletsText: e.target.value,
+                          })
+                        }
                         placeholder="e.g. Collaborated with cross-functional teams to coordinate online events&#10;Developed robust routing security in core layouts"
                         className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white font-sans"
                       />
@@ -1245,7 +1518,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                         type="submit"
                         className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition"
                       >
-                        {expForm.id ? 'Save Updates' : 'Add Experience Card'}
+                        {expForm.id ? "Save Updates" : "Add Experience Card"}
                       </button>
                     </div>
                   </form>
@@ -1253,13 +1526,20 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
                 {/* Experience List */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Current Positions</h3>
+                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
+                    Current Positions
+                  </h3>
                   <div className="space-y-3">
                     {data.experiences.map((exp) => (
-                      <div key={exp.id} className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex justify-between items-start shadow-xs">
+                      <div
+                        key={exp.id}
+                        className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex justify-between items-start shadow-xs"
+                      >
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{exp.role}</h4>
+                            <h4 className="font-bold text-sm text-zinc-900 dark:text-white">
+                              {exp.role}
+                            </h4>
                             <span className="px-2 py-0.5 text-4xs font-bold uppercase tracking-wider rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
                               {exp.type}
                             </span>
@@ -1267,7 +1547,9 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                             {exp.company} &bull; {exp.location}
                           </p>
-                          <p className="text-3xs text-zinc-400 mt-1 font-semibold">{exp.duration}</p>
+                          <p className="text-3xs text-zinc-400 mt-1 font-semibold">
+                            {exp.duration}
+                          </p>
                         </div>
 
                         <div className="flex gap-1.5 ml-4">
@@ -1292,46 +1574,56 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                     ))}
                   </div>
                 </div>
-
               </div>
             )}
 
             {/* 4. Education & Certifications Panel */}
-            {activeTab === 'education' && (
+            {activeTab === "education" && (
               <div className="space-y-8">
-                
                 {/* Education section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
                   {/* Education Form */}
                   <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs">
                     <div className="flex items-center gap-2 mb-4">
                       <GraduationCap className="w-5 h-5 text-emerald-500" />
                       <h2 className="text-base font-bold text-zinc-900 dark:text-white">
-                        {eduForm.id ? 'Edit Education Entry' : 'Add Education History'}
+                        {eduForm.id
+                          ? "Edit Education Entry"
+                          : "Add Education History"}
                       </h2>
                     </div>
 
                     <form onSubmit={handleSaveEdu} className="space-y-3">
                       <div>
-                        <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Degree Title</label>
+                        <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                          Degree Title
+                        </label>
                         <input
                           type="text"
                           required
                           value={eduForm.degree}
-                          onChange={(e) => setEduForm({ ...eduForm, degree: e.target.value })}
+                          onChange={(e) =>
+                            setEduForm({ ...eduForm, degree: e.target.value })
+                          }
                           placeholder="e.g. Master of Computer Applications (MCA)"
                           className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
-                      
+
                       <div>
-                        <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Institution</label>
+                        <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                          Institution
+                        </label>
                         <input
                           type="text"
                           required
                           value={eduForm.institution}
-                          onChange={(e) => setEduForm({ ...eduForm, institution: e.target.value })}
+                          onChange={(e) =>
+                            setEduForm({
+                              ...eduForm,
+                              institution: e.target.value,
+                            })
+                          }
                           placeholder="e.g. Patna University"
                           className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
@@ -1339,23 +1631,37 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Location</label>
+                          <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                            Location
+                          </label>
                           <input
                             type="text"
                             required
                             value={eduForm.location}
-                            onChange={(e) => setEduForm({ ...eduForm, location: e.target.value })}
+                            onChange={(e) =>
+                              setEduForm({
+                                ...eduForm,
+                                location: e.target.value,
+                              })
+                            }
                             placeholder="Patna, India"
                             className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Period</label>
+                          <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                            Period
+                          </label>
                           <input
                             type="text"
                             required
                             value={eduForm.duration}
-                            onChange={(e) => setEduForm({ ...eduForm, duration: e.target.value })}
+                            onChange={(e) =>
+                              setEduForm({
+                                ...eduForm,
+                                duration: e.target.value,
+                              })
+                            }
                             placeholder="2024 - 2026"
                             className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                           />
@@ -1363,12 +1669,16 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                       </div>
 
                       <div>
-                        <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Score / Grade</label>
+                        <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                          Score / Grade
+                        </label>
                         <input
                           type="text"
                           required
                           value={eduForm.score}
-                          onChange={(e) => setEduForm({ ...eduForm, score: e.target.value })}
+                          onChange={(e) =>
+                            setEduForm({ ...eduForm, score: e.target.value })
+                          }
                           placeholder="e.g. CGPA: 8.59 or 73.75%"
                           className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
@@ -1378,7 +1688,15 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                         {eduForm.id && (
                           <button
                             type="button"
-                            onClick={() => setEduForm({ degree: '', institution: '', location: '', duration: '', score: '' })}
+                            onClick={() =>
+                              setEduForm({
+                                degree: "",
+                                institution: "",
+                                location: "",
+                                duration: "",
+                                score: "",
+                              })
+                            }
                             className="px-3.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold text-xs rounded-xl transition cursor-pointer"
                           >
                             Cancel
@@ -1388,7 +1706,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                           type="submit"
                           className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition cursor-pointer"
                         >
-                          {eduForm.id ? 'Save Changes' : 'Add Education'}
+                          {eduForm.id ? "Save Changes" : "Add Education"}
                         </button>
                       </div>
                     </form>
@@ -1396,13 +1714,27 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
                   {/* Education List */}
                   <div className="space-y-3">
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Current Education Entries</h3>
-                    {data.educations.map(edu => (
-                      <div key={edu.id} className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex justify-between items-start shadow-xs">
+                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                      Current Education Entries
+                    </h3>
+                    {data.educations.map((edu) => (
+                      <div
+                        key={edu.id}
+                        className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex justify-between items-start shadow-xs"
+                      >
                         <div className="min-w-0 flex-1 pr-2">
-                          <h4 className="font-bold text-xs text-zinc-900 dark:text-white leading-snug">{edu.degree}</h4>
-                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">{edu.institution} &bull; {edu.location}</p>
-                          <p className="text-3xs text-zinc-400 mt-1 font-medium">{edu.duration} | <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{edu.score}</span></p>
+                          <h4 className="font-bold text-xs text-zinc-900 dark:text-white leading-snug">
+                            {edu.degree}
+                          </h4>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                            {edu.institution} &bull; {edu.location}
+                          </p>
+                          <p className="text-3xs text-zinc-400 mt-1 font-medium">
+                            {edu.duration} |{" "}
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                              {edu.score}
+                            </span>
+                          </p>
                         </div>
                         <div className="flex gap-1.5 shrink-0">
                           <button
@@ -1425,55 +1757,70 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                       </div>
                     ))}
                   </div>
-
                 </div>
 
                 <div className="border-t border-zinc-200 dark:border-zinc-800 my-4"></div>
 
                 {/* Certifications section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
                   {/* Certificate Form */}
                   <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs">
                     <div className="flex items-center gap-2 mb-4">
                       <Award className="w-5 h-5 text-emerald-500" />
                       <h2 className="text-base font-bold text-zinc-900 dark:text-white">
-                        {certForm.id ? 'Edit Professional Certificate' : 'Add Professional Certificate'}
+                        {certForm.id
+                          ? "Edit Professional Certificate"
+                          : "Add Professional Certificate"}
                       </h2>
                     </div>
 
                     <form onSubmit={handleSaveCert} className="space-y-3">
                       <div>
-                        <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Certification Name</label>
+                        <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                          Certification Name
+                        </label>
                         <input
                           type="text"
                           required
                           value={certForm.name}
-                          onChange={(e) => setCertForm({ ...certForm, name: e.target.value })}
+                          onChange={(e) =>
+                            setCertForm({ ...certForm, name: e.target.value })
+                          }
                           placeholder="e.g. AWS Certified Developer"
                           className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
                       </div>
-                      
+
                       <div className="grid grid-cols-3 gap-2">
                         <div className="col-span-2">
-                          <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Issuer Name</label>
+                          <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                            Issuer Name
+                          </label>
                           <input
                             type="text"
                             required
                             value={certForm.issuer}
-                            onChange={(e) => setCertForm({ ...certForm, issuer: e.target.value })}
+                            onChange={(e) =>
+                              setCertForm({
+                                ...certForm,
+                                issuer: e.target.value,
+                              })
+                            }
                             placeholder="Infosys, Oracle"
                             className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Year</label>
+                          <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                            Year
+                          </label>
                           <input
                             type="text"
                             required
                             value={certForm.year}
-                            onChange={(e) => setCertForm({ ...certForm, year: e.target.value })}
+                            onChange={(e) =>
+                              setCertForm({ ...certForm, year: e.target.value })
+                            }
                             placeholder="2025"
                             className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                           />
@@ -1481,11 +1828,15 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                       </div>
 
                       <div>
-                        <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Credential URL (Optional)</label>
+                        <label className="block text-2xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                          Credential URL (Optional)
+                        </label>
                         <input
                           type="url"
                           value={certForm.url}
-                          onChange={(e) => setCertForm({ ...certForm, url: e.target.value })}
+                          onChange={(e) =>
+                            setCertForm({ ...certForm, url: e.target.value })
+                          }
                           placeholder="e.g. https://domain.com/certificate/123"
                           className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
@@ -1495,7 +1846,14 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                         {certForm.id && (
                           <button
                             type="button"
-                            onClick={() => setCertForm({ name: '', issuer: '', year: '', url: '' })}
+                            onClick={() =>
+                              setCertForm({
+                                name: "",
+                                issuer: "",
+                                year: "",
+                                url: "",
+                              })
+                            }
                             className="px-3.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold text-xs rounded-xl transition cursor-pointer"
                           >
                             Cancel
@@ -1505,7 +1863,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                           type="submit"
                           className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition cursor-pointer"
                         >
-                          {certForm.id ? 'Save Changes' : 'Add Certification'}
+                          {certForm.id ? "Save Changes" : "Add Certification"}
                         </button>
                       </div>
                     </form>
@@ -1513,17 +1871,26 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
                   {/* Certificates List */}
                   <div className="space-y-3">
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Current Certifications</h3>
-                    {data.certifications.map(c => (
-                      <div key={c.id} className="p-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex justify-between items-center shadow-xs">
+                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                      Current Certifications
+                    </h3>
+                    {data.certifications.map((c) => (
+                      <div
+                        key={c.id}
+                        className="p-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex justify-between items-center shadow-xs"
+                      >
                         <div className="min-w-0 flex-1">
-                          <h4 className="font-bold text-xs text-zinc-900 dark:text-white leading-tight truncate">{c.name}</h4>
+                          <h4 className="font-bold text-xs text-zinc-900 dark:text-white leading-tight truncate">
+                            {c.name}
+                          </h4>
                           <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
-                            {c.issuer} &bull; <span className="font-semibold">{c.year}</span>
+                            {c.issuer} &bull;{" "}
+                            <span className="font-semibold">{c.year}</span>
                           </p>
                           {c.url && (
                             <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5 truncate">
-                              Has URL: <span className="underline">{c.url}</span>
+                              Has URL:{" "}
+                              <span className="underline">{c.url}</span>
                             </p>
                           )}
                         </div>
@@ -1548,23 +1915,20 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                       </div>
                     ))}
                   </div>
-
                 </div>
-
               </div>
             )}
 
             {/* 6. Skills & Sections Panel */}
-            {activeTab === 'skills' && (
+            {activeTab === "skills" && (
               <div className="space-y-6">
-                
                 {/* Section 1 & 2: Add Skill & Manage Sections */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs">
                     <div className="flex items-center gap-2 mb-4">
                       <Plus className="w-5 h-5 text-emerald-500" />
                       <h2 className="text-base font-bold text-zinc-900 dark:text-white">
-                        {skillForm.id ? 'Edit Skill' : 'Add New Skill'}
+                        {skillForm.id ? "Edit Skill" : "Add New Skill"}
                       </h2>
                     </div>
 
@@ -1579,15 +1943,18 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setCategoryMode('select');
+                                  setCategoryMode("select");
                                   if (uniqueCategories.length > 0) {
-                                    setSkillForm(prev => ({ ...prev, category: uniqueCategories[0] }));
+                                    setSkillForm((prev) => ({
+                                      ...prev,
+                                      category: uniqueCategories[0],
+                                    }));
                                   }
                                 }}
                                 className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition cursor-pointer ${
-                                  categoryMode === 'select'
-                                    ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-3xs'
-                                    : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                                  categoryMode === "select"
+                                    ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-3xs"
+                                    : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
                                 }`}
                               >
                                 Choose Existing
@@ -1595,13 +1962,16 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setCategoryMode('new');
-                                  setSkillForm(prev => ({ ...prev, category: '' }));
+                                  setCategoryMode("new");
+                                  setSkillForm((prev) => ({
+                                    ...prev,
+                                    category: "",
+                                  }));
                                 }}
                                 className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition cursor-pointer ${
-                                  categoryMode === 'new'
-                                    ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-3xs'
-                                    : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                                  categoryMode === "new"
+                                    ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-3xs"
+                                    : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
                                 }`}
                               >
                                 Create New
@@ -1610,16 +1980,26 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                           )}
                         </div>
 
-                        {categoryMode === 'select' && uniqueCategories.length > 0 ? (
+                        {categoryMode === "select" &&
+                        uniqueCategories.length > 0 ? (
                           <select
                             required
                             value={skillForm.category}
-                            onChange={(e) => setSkillForm({ ...skillForm, category: e.target.value })}
+                            onChange={(e) =>
+                              setSkillForm({
+                                ...skillForm,
+                                category: e.target.value,
+                              })
+                            }
                             className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white cursor-pointer"
                           >
-                            <option value="" disabled>-- Select Existing Section --</option>
-                            {uniqueCategories.map(cat => (
-                              <option key={cat} value={cat}>{cat}</option>
+                            <option value="" disabled>
+                              -- Select Existing Section --
+                            </option>
+                            {uniqueCategories.map((cat) => (
+                              <option key={cat} value={cat}>
+                                {cat}
+                              </option>
                             ))}
                           </select>
                         ) : (
@@ -1627,13 +2007,19 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                             type="text"
                             required
                             value={skillForm.category}
-                            onChange={(e) => setSkillForm({ ...skillForm, category: e.target.value })}
+                            onChange={(e) =>
+                              setSkillForm({
+                                ...skillForm,
+                                category: e.target.value,
+                              })
+                            }
                             placeholder="e.g. Frontend, Databases, Languages..."
                             className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                           />
                         )}
                         <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">
-                          {categoryMode === 'select' && uniqueCategories.length > 0 
+                          {categoryMode === "select" &&
+                          uniqueCategories.length > 0
                             ? "Assign the skill to one of your current portfolio sections."
                             : "Create a brand new section/category for your skills list."}
                         </p>
@@ -1647,7 +2033,9 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                           type="text"
                           required
                           value={skillForm.name}
-                          onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
+                          onChange={(e) =>
+                            setSkillForm({ ...skillForm, name: e.target.value })
+                          }
                           placeholder="e.g. React.js, Python, AWS"
                           className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-white"
                         />
@@ -1658,7 +2046,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                           <button
                             type="button"
                             onClick={() => {
-                              setSkillForm({ category: '', name: '' });
+                              setSkillForm({ category: "", name: "" });
                               setIsEditingSkill(false);
                             }}
                             className="px-3.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold text-xs rounded-xl transition cursor-pointer"
@@ -1670,7 +2058,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                           type="submit"
                           className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition cursor-pointer"
                         >
-                          {skillForm.id ? 'Save Changes' : 'Add Skill'}
+                          {skillForm.id ? "Save Changes" : "Add Skill"}
                         </button>
                       </div>
                     </form>
@@ -1687,14 +2075,26 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
                     <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
                       {uniqueCategories.length === 0 ? (
-                        <p className="text-xs text-zinc-400 text-center py-6">No sections yet.</p>
+                        <p className="text-xs text-zinc-400 text-center py-6">
+                          No sections yet.
+                        </p>
                       ) : (
-                        uniqueCategories.map(cat => {
-                          const count = data.skills.filter(s => s.category === cat).length;
+                        uniqueCategories.map((cat) => {
+                          const count = data.skills.filter(
+                            (s) => s.category === cat,
+                          ).length;
                           return (
-                            <div key={cat} className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-250/40 dark:border-zinc-805 rounded-xl space-y-2">
+                            <div
+                              key={cat}
+                              className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-250/40 dark:border-zinc-805 rounded-xl space-y-2"
+                            >
                               <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">{cat} <span className="text-2xs font-normal text-zinc-400">({count} skills)</span></span>
+                                <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                                  {cat}{" "}
+                                  <span className="text-2xs font-normal text-zinc-400">
+                                    ({count} skills)
+                                  </span>
+                                </span>
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteCategory(cat)}
@@ -1714,10 +2114,15 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const input = document.getElementById(`rename-cat-${cat}`) as HTMLInputElement;
+                                    const input = document.getElementById(
+                                      `rename-cat-${cat}`,
+                                    ) as HTMLInputElement;
                                     if (input && input.value.trim()) {
-                                      handleRenameCategory(cat, input.value.trim());
-                                      input.value = '';
+                                      handleRenameCategory(
+                                        cat,
+                                        input.value.trim(),
+                                      );
+                                      input.value = "";
                                     }
                                   }}
                                   className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950 text-emerald-600 dark:text-emerald-400 text-2xs font-semibold rounded-lg transition cursor-pointer"
@@ -1735,29 +2140,44 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
 
                 {/* Section 3: Grouped Skills List */}
                 <div className="space-y-4">
-                  <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">All Skills Grouped by Section</h3>
+                  <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                    All Skills Grouped by Section
+                  </h3>
                   {uniqueCategories.length === 0 ? (
                     <div className="text-center py-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
-                      <p className="text-xs text-zinc-400">No skills currently available. Add some skills above!</p>
+                      <p className="text-xs text-zinc-400">
+                        No skills currently available. Add some skills above!
+                      </p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {uniqueCategories.map(cat => {
-                        const catSkills = data.skills.filter(s => s.category === cat);
+                      {uniqueCategories.map((cat) => {
+                        const catSkills = data.skills.filter(
+                          (s) => s.category === cat,
+                        );
                         return (
-                          <div key={cat} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-3xs">
-                            <h4 className="text-2xs font-bold text-zinc-400 uppercase tracking-wider mb-3 border-b border-zinc-100 dark:border-zinc-800 pb-1.5">{cat}</h4>
+                          <div
+                            key={cat}
+                            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-3xs"
+                          >
+                            <h4 className="text-2xs font-bold text-zinc-400 uppercase tracking-wider mb-3 border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
+                              {cat}
+                            </h4>
                             <div className="flex flex-wrap gap-2">
-                              {catSkills.map(skill => (
-                                <div 
-                                  key={skill.id} 
+                              {catSkills.map((skill) => (
+                                <div
+                                  key={skill.id}
                                   className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 rounded-lg group/item hover:border-emerald-500/20"
                                 >
-                                  <span className="text-2xs font-semibold text-zinc-700 dark:text-zinc-300">{skill.name}</span>
+                                  <span className="text-2xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                    {skill.name}
+                                  </span>
                                   <div className="flex gap-0.5 opacity-40 group-hover/item:opacity-100 transition-opacity">
                                     <button
                                       type="button"
-                                      onClick={() => handleEditSkillClick(skill)}
+                                      onClick={() =>
+                                        handleEditSkillClick(skill)
+                                      }
                                       className="p-0.5 text-zinc-400 hover:text-emerald-500 cursor-pointer"
                                       title="Edit skill name"
                                     >
@@ -1765,7 +2185,9 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleDeleteSkill(skill.id)}
+                                      onClick={() =>
+                                        handleDeleteSkill(skill.id)
+                                      }
                                       className="p-0.5 text-zinc-400 hover:text-red-500 cursor-pointer"
                                       title="Delete skill"
                                     >
@@ -1781,18 +2203,19 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                     </div>
                   )}
                 </div>
-
               </div>
             )}
 
             {/* 5. Messages Panel */}
-            {activeTab === 'messages' && (
+            {activeTab === "messages" && (
               <div className="space-y-6">
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs">
                   <div className="flex items-center justify-between mb-6 pb-4 border-b border-zinc-150 dark:border-zinc-800">
                     <div className="flex items-center gap-3">
                       <Mail className="w-5 h-5 text-emerald-500" />
-                      <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Visitor Inquiries</h2>
+                      <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
+                        Visitor Inquiries
+                      </h2>
                     </div>
                     <span className="text-xs font-semibold px-2.5 py-1 bg-zinc-50 dark:bg-zinc-950 text-zinc-500 border border-zinc-150 dark:border-zinc-800 rounded-lg">
                       Total: {messages.length} inquiries
@@ -1802,35 +2225,46 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                   {messages.length === 0 ? (
                     <div className="text-center py-12">
                       <Mail className="w-10 h-10 text-zinc-300 dark:text-zinc-700 mx-auto mb-3" />
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Your inbox is completely clear!</p>
-                      <p className="text-xs text-zinc-400 mt-1">Messages sent through the portfolio form will appear here instantly.</p>
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">
+                        Your inbox is completely clear!
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        Messages sent through the portfolio form will appear
+                        here instantly.
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {messages.map((msg) => (
-                        <div 
-                          key={msg.id} 
+                        <div
+                          key={msg.id}
                           className={`p-5 rounded-2xl border transition-all ${
-                            msg.read 
-                              ? 'bg-zinc-50/50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800' 
-                              : 'bg-emerald-50/10 dark:bg-emerald-950/5 border-emerald-200/50 dark:border-emerald-900/30 ring-1 ring-emerald-500/20'
+                            msg.read
+                              ? "bg-zinc-50/50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800"
+                              : "bg-emerald-50/10 dark:bg-emerald-950/5 border-emerald-200/50 dark:border-emerald-900/30 ring-1 ring-emerald-500/20"
                           }`}
                         >
                           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-3.5">
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-sm text-zinc-900 dark:text-white">{msg.name}</span>
+                                <span className="font-bold text-sm text-zinc-900 dark:text-white">
+                                  {msg.name}
+                                </span>
                                 {!msg.read && (
                                   <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-500 text-white rounded">
                                     New
                                   </span>
                                 )}
                               </div>
-                              <span className="text-xs text-zinc-400 dark:text-zinc-500">{msg.email}</span>
+                              <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                                {msg.email}
+                              </span>
                             </div>
-                            
+
                             <div className="flex items-center gap-2.5">
-                              <span className="text-2xs text-zinc-400 dark:text-zinc-500 font-mono font-medium">{msg.timestamp}</span>
+                              <span className="text-2xs text-zinc-400 dark:text-zinc-500 font-mono font-medium">
+                                {msg.timestamp}
+                              </span>
                               <div className="flex items-center gap-1.5">
                                 {!msg.read && (
                                   <button
@@ -1853,8 +2287,12 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                           </div>
 
                           <div className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 rounded-xl p-3.5">
-                            <h5 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Subject: {msg.subject}</h5>
-                            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed whitespace-pre-line">{msg.text}</p>
+                            <h5 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">
+                              Subject: {msg.subject}
+                            </h5>
+                            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed whitespace-pre-line">
+                              {msg.text}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -1863,9 +2301,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                 </div>
               </div>
             )}
-
           </div>
-
         </div>
       </div>
 
@@ -1884,7 +2320,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                 {confirmDialog.message}
               </p>
             </div>
-            
+
             <div className="flex border-t border-zinc-150 dark:border-zinc-800">
               <button
                 type="button"
@@ -1904,7 +2340,6 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
           </div>
         </div>
       )}
-
     </div>
   );
 }
