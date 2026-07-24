@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Edit, ShieldCheck, LogOut, LayoutGrid } from 'lucide-react';
-import { getPortfolioData, isAdminAuthenticated, setAdminAuthenticated } from './lib/storage';
+import { Eye, Edit, ShieldCheck, LogOut } from 'lucide-react';
+import { isAdminAuthenticated, setAdminAuthenticated, initPortfolioData } from './lib/storage';
 import { PortfolioData } from './types';
 import PortfolioView from './components/PortfolioView';
 import AdminDashboard from './components/AdminDashboard';
@@ -13,17 +13,20 @@ export default function App() {
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [viewMode, setViewMode] = useState<'preview' | 'admin'>('preview');
 
-  // Load initial state and set up Firebase Auth listener
   useEffect(() => {
-    setPortfolioData(getPortfolioData());
+    // 🔥 Subscribe to Firestore portfolio data
+    const unsubPortfolio = initPortfolioData((cloudData) => {
+      setPortfolioData(cloudData);
+    });
 
+    // Firebase Auth listener
+    let unsubAuth: (() => void) | undefined;
     if (isFirebaseConfigured && auth) {
-      const unsubscribe = onAuthStateChanged(auth!, async (user) => {
+      unsubAuth = onAuthStateChanged(auth!, async (user) => {
         if (user && isAllowedAdminEmail(user.email)) {
           setAdminAuthenticated(true);
           setIsAdmin(true);
         } else {
-          // If unauthorized user is signed into Firebase, force sign-out
           if (user && !isAllowedAdminEmail(user.email)) {
             console.warn(`Unauthorized login attempt by: ${user.email}`);
             try {
@@ -37,7 +40,6 @@ export default function App() {
           setViewMode('preview');
         }
       });
-      return () => unsubscribe();
     } else {
       const authStatus = isAdminAuthenticated();
       setIsAdmin(authStatus);
@@ -45,15 +47,18 @@ export default function App() {
         setViewMode('preview');
       }
     }
+
+    return () => {
+      unsubPortfolio();
+      if (unsubAuth) unsubAuth();
+    };
   }, []);
 
-  // Update states when portfolio data changes in dashboard
   const handleDataChange = () => {
-    setPortfolioData(getPortfolioData());
+    // Firestore subscription will update portfolioData automatically
   };
 
   const handleOpenLoginModal = () => {
-    // If not authenticated, ensure admin mode is disabled while logging in
     const isAuth = isFirebaseConfigured && auth 
       ? (auth.currentUser ? isAllowedAdminEmail(auth.currentUser.email) : false)
       : isAdminAuthenticated();
@@ -68,7 +73,6 @@ export default function App() {
 
   const handleCloseLoginModal = () => {
     setShowLoginModal(false);
-    // When closing login modal without completing authentication, strictly revoke admin view
     const isAuth = isFirebaseConfigured && auth 
       ? (auth.currentUser ? isAllowedAdminEmail(auth.currentUser.email) : false)
       : isAdminAuthenticated();
@@ -84,7 +88,7 @@ export default function App() {
     setAdminAuthenticated(true);
     setIsAdmin(true);
     setShowLoginModal(false);
-    setViewMode('admin'); // Instantly navigate to admin panel upon success
+    setViewMode('admin');
   };
 
   const handleLogout = async () => {
@@ -102,20 +106,38 @@ export default function App() {
   };
 
   if (!portfolioData) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-950 text-white">
-        <div className="text-center space-y-2">
-          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm text-zinc-400 font-semibold">Initializing Priyewrat's Portfolio...</p>
+  return (
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-6">
+      <div className="max-w-4xl mx-auto space-y-6 animate-pulse">
+        {/* Profile header skeleton */}
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-zinc-300 dark:bg-zinc-800"></div>
+          <div className="space-y-2">
+            <div className="h-4 w-32 bg-zinc-300 dark:bg-zinc-800 rounded"></div>
+            <div className="h-3 w-48 bg-zinc-300 dark:bg-zinc-800 rounded"></div>
+          </div>
+        </div>
+
+        {/* Section skeletons */}
+        <div className="h-4 w-1/2 bg-zinc-300 dark:bg-zinc-800 rounded"></div>
+        <div className="h-3 w-3/4 bg-zinc-300 dark:bg-zinc-800 rounded"></div>
+        <div className="h-3 w-2/3 bg-zinc-300 dark:bg-zinc-800 rounded"></div>
+
+        {/* Projects grid skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="h-32 bg-zinc-300 dark:bg-zinc-800 rounded"></div>
+          ))}
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
+
 
   return (
     <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-zinc-950">
       
-      {/* Admin Floating Control Strip (Shown only to logged in administrators) */}
       {isAdmin && (
         <div className="sticky top-0 z-50 bg-zinc-900 text-white border-b border-zinc-800 text-xs px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-2.5 shadow-md">
           <div className="flex items-center gap-2">
@@ -164,7 +186,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Primary Display Switch */}
       <main className="flex-grow">
         {viewMode === 'admin' && isAdmin ? (
           <AdminDashboard onLogout={handleLogout} onDataChange={handleDataChange} />
@@ -176,14 +197,12 @@ export default function App() {
         )}
       </main>
 
-      {/* Floating Modal for Admin login credentials */}
       {showLoginModal && (
         <LoginForm 
           onSuccess={handleLoginSuccess} 
           onClose={handleCloseLoginModal} 
         />
       )}
-
     </div>
   );
 }

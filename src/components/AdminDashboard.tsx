@@ -4,7 +4,49 @@ import {
   Plus, Trash2, Edit3, Check, X, FileText, Globe, MapPin, Phone, RefreshCw, Layers, Upload
 } from 'lucide-react';
 import { PortfolioData, Project, Experience, Education, Certification, Profile, JobType, Message } from '../types';
-import { getPortfolioData, savePortfolioData, getMessages, deleteMessage, markMessageAsRead } from '../lib/storage';
+import { getPortfolioData, savePortfolioData,  deleteMessage, markMessageAsRead, subscribeMessages, initPortfolioData } from '../lib/storage';
+
+// Helper to compress uploaded avatar images so they fit comfortably within Firestore document limits
+function compressImage(file: File, maxWidth = 400, maxHeight = 400, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(event.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedBase64);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+}
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -116,16 +158,31 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     name: ''
   });
 
-  // Load initial data
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Load initial data and subscribe to real-time Cloud updates
+ useEffect(() => {
+  const unsubPortfolio = initPortfolioData((cloudPortfolio) => {
+    setData(cloudPortfolio);
+    setEditProfile((prev) => (prev ? prev : cloudPortfolio.profile));
+  });
+
+  const unsubMessages = subscribeMessages((updatedMsgs) => {
+    // sort newest first if needed
+    const sorted = [...updatedMsgs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    setMessages(sorted);
+  });
+
+  return () => {
+    unsubPortfolio();
+    unsubMessages();
+  };
+}, []);
+
 
   const loadData = () => {
     const portfolio = getPortfolioData();
     setData(portfolio);
     setEditProfile(portfolio.profile);
-    setMessages(getMessages());
+    // setMessages(getMessages());
   };
 
   const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
@@ -133,7 +190,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !editProfile) return;
     
@@ -142,21 +199,22 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
       return;
     }
     
-    if (file.size > 2 * 1024 * 1024) {
-      showNotification('Image size should be less than 2MB', 'error');
+    if (file.size > 5 * 1024 * 1024) {
+      showNotification('Image size should be less than 5MB', 'error');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
+    try {
+      const compressedBase64 = await compressImage(file, 400, 400, 0.8);
       setEditProfile({
         ...editProfile,
-        avatarUrl: base64String
+        avatarUrl: compressedBase64
       });
-      showNotification('Profile picture updated!');
-    };
-    reader.readAsDataURL(file);
+      showNotification('Profile picture updated & optimized!');
+    } catch (err) {
+      console.error('Failed to process image:', err);
+      showNotification('Failed to process image', 'error');
+    }
   };
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -553,7 +611,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
   // Message Inbox Actions
   const handleMarkAsRead = (id: string) => {
     markMessageAsRead(id);
-    setMessages(getMessages());
+    // setMessages(getMessages());
     showNotification('Message marked as read.');
   };
 
@@ -564,7 +622,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
       message: 'Are you sure you want to delete this visitor inquiry? This action cannot be undone.',
       onConfirm: () => {
         deleteMessage(id);
-        setMessages(getMessages());
+        // setMessages(getMessages());
         showNotification('Message deleted from inbox.');
         setConfirmDialog(null);
       }
@@ -604,14 +662,14 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
           <div className="flex items-center gap-3">
             <button
               onClick={loadData}
-              className="p-2.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 rounded-xl transition cursor-pointer"
+              className="p-2.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 rounded-xl transition"
               title="Refresh local database"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
             <button
               onClick={onLogout}
-              className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-xl transition shadow-xs cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-xl transition shadow-xs"
             >
               Exit Dashboard
             </button>
@@ -888,7 +946,7 @@ export default function AdminDashboard({ onLogout, onDataChange }: AdminDashboar
                     <div className="flex justify-end pt-2">
                       <button
                         type="submit"
-                        className="px-5 py-2.5 bg-zinc-900 dark:bg-emerald-600 hover:bg-zinc-800 dark:hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition shadow-xs"
+                        className="px-5 py-2.5 bg-zinc-900 dark:bg-emerald-600 hover:bg-zinc-800 dark:hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition shadow-xs cursor-pointer"
                       >
                         Save Profile Details
                       </button>

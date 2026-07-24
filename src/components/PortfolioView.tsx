@@ -66,25 +66,28 @@ export default function PortfolioView({ onLoginClick, portfolioData }: Portfolio
     }
   }, [darkMode]);
 
-  const handleContactSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSending(true);
-    
-    setTimeout(() => {
-      addMessage({
-        name: contactForm.name,
-        email: contactForm.email,
-        subject: contactForm.subject,
-        text: contactForm.text
-      });
-      
-      setSending(false);
-      setFormSubmitted(true);
-      setContactForm({ name: '', email: '', subject: '', text: '' });
-      
-      setTimeout(() => setFormSubmitted(false), 4000);
-    }, 600);
-  };
+  const handleContactSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setSending(true);
+
+  try {
+    await addMessage({
+      name: contactForm.name,
+      email: contactForm.email,
+      subject: contactForm.subject,
+      text: contactForm.text
+    });
+
+    setSending(false);
+    setFormSubmitted(true);
+    setContactForm({ name: "", email: "", subject: "", text: "" });
+
+    setTimeout(() => setFormSubmitted(false), 4000);
+  } catch (err) {
+    console.error("Failed to send message:", err);
+    setSending(false);
+  }
+};
 
   // Filter experiences based on selectedJobType
   const filteredExperiences = selectedJobType === 'All' 

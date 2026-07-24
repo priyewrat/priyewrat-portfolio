@@ -1,25 +1,47 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import type { FirebaseApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  sendPasswordResetEmail, 
-  signInWithPopup, 
+import { initializeApp, getApps, getApp } from "firebase/app";
+import type { FirebaseApp } from "firebase/app";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signInWithPopup,
   GoogleAuthProvider,
   signOut,
-  onAuthStateChanged
-} from 'firebase/auth';
-import type { Auth } from 'firebase/auth';
+  onAuthStateChanged,
+} from "firebase/auth";
+import type { Auth } from "firebase/auth";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+  collection,
+  addDoc,
+  deleteDoc,
+  updateDoc,
+} from "firebase/firestore";
+import type { Firestore } from "firebase/firestore";
 
+type FirebaseConfigJson = {
+  apiKey?: string;
+  authDomain?: string;
+  projectId?: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId?: string;
+};
+
+const firebaseConfigJson: FirebaseConfigJson = {};
 const env = (import.meta as any).env || {};
 
 const firebaseConfig = {
-  apiKey: env.VITE_FIREBASE_API_KEY,
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: env.VITE_FIREBASE_APP_ID,
+  apiKey: env.VITE_FIREBASE_API_KEY || firebaseConfigJson.apiKey,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigJson.authDomain,
+  projectId: env.VITE_FIREBASE_PROJECT_ID || firebaseConfigJson.projectId,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigJson.storageBucket,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigJson.messagingSenderId,
+  appId: env.VITE_FIREBASE_APP_ID || firebaseConfigJson.appId,
 };
 
 // Check if all configuration parameters exist
@@ -29,27 +51,27 @@ export const isFirebaseConfigured = !!(
   firebaseConfig.projectId
 );
 
-let app: FirebaseApp | undefined;
-let auth: Auth | null = null;
-let googleProvider: GoogleAuthProvider | null = null;
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+let googleProvider: GoogleAuthProvider;
 
 if (isFirebaseConfigured) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
+    db = getFirestore(app);
+
     googleProvider = new GoogleAuthProvider();
-    // Configure Google Auth provider settings if needed
-    googleProvider.setCustomParameters({
-      prompt: 'select_account'
-    });
+    googleProvider.setCustomParameters({ prompt: "select_account" });
   } catch (error) {
-    console.error('Error initializing real Firebase app:', error);
+    console.error("🔥 Firebase initialization failed:", error);
   }
 }
 
 export const ALLOWED_ADMIN_EMAILS = [
-  'priyewratsingh@gmail.com',
-  'priyewrat@gmail.com',
+  "priyewratsingh@gmail.com",
+  "priyewrat@gmail.com",
 ];
 
 export function isAllowedAdminEmail(email: string | null | undefined): boolean {
@@ -57,12 +79,21 @@ export function isAllowedAdminEmail(email: string | null | undefined): boolean {
   return ALLOWED_ADMIN_EMAILS.includes(email.trim().toLowerCase());
 }
 
-export { 
-  auth, 
+export {
+  auth,
+  db,
   googleProvider,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   signInWithPopup,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+  collection,
+  addDoc,
+  deleteDoc,
+  updateDoc,
 };
